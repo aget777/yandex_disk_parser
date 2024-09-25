@@ -185,40 +185,35 @@ def get_hybrid_video_banner_report(data_link, report_type, sheet_name):
 
 def get_beeline_video_report(data_link, report_type):
     tmp_video_dict = {}
-    
+        
     sheet_names = pd.ExcelFile(BytesIO(data_link))
     cols_range = 'A:J' # задаем диапазон полей, которые нам нужны
-    # создаем список с названиями полей
-    cols_name = ['date', 'impressions','reach', 'clicks', 'ctr', '100', 'vcr', '25', '50', '75']
     
      # проходим через цикл по списку названий листов
     for name in sheet_names.sheet_names:
         # передаем название листа для парсинга, диапазон колонок, которые нам нужны и заранее подготовленный списко названий полей
-        df = pd.read_excel(BytesIO(data_link), sheet_name=name, usecols=cols_range, header=None, names=cols_name, skiprows=8) 
+        df = pd.read_excel(BytesIO(data_link), sheet_name=name, usecols=cols_range, header=None, skiprows=8) 
         df = df.fillna(0)  #заполяем пустые строки, чтобы затем их удалить
         
-        start_index_list = list(df[df['date']=='Date'].index)  # берем индекс начала таблицы с данными
+        start_index_list = list(df[df[0]=='Date'].index)  # собираем список индексов, где есть название Date
     
         # Проходим через цикл по каждой таблице, которая содержится на листе
         for num, i in enumerate(start_index_list):
-        
             # забираем индекс строки начала таблицы
-            start_index = start_index_list[num]
-            # Проверяем есть ли над полем Дата есть дополнительное название Креатива
-            creative_name = df['date'][start_index-1]
-            key = name
-            # если такое название есть, то добавляем его к базовому названию креатива
+            start_index = start_index_list[num] # берем индекс начала таблицы с данными
+            creative_name = df[0][start_index-1] # забираем значение из ячейки над полем Дата 
+            key = name 
             if creative_name:
-                key = name + '_' + str(creative_name).lower()
+                key = name + '_' + str(creative_name).lower().str.strip() # если такое название есть, то добавляем его к базовому названию креатива
                 
-            # Задаем начало и окончание конкретной таблицы для парсинга
             df_tmp = df.iloc[start_index+1:]
-            df_tmp = df_tmp.reset_index(drop=True)
-            end_index = list(df_tmp[df_tmp['date']==0].index)[0]
-            df_tmp = df_tmp.iloc[:end_index]
-            
-            # нормализуем данные в отдельно взятой таблице
-            df_tmp = df_tmp[['date', 'impressions','reach', 'clicks', '100', '25', '50', '75']] # оставляем только нужные поля
+            df_tmp.columns = df.iloc[start_index].str.lower().str.strip() # забираем название полей из файла
+            # привоодим их к единому стандарту
+            df_tmp = df_tmp.rename(columns={'first quartile': '25', 'midpoint': '50', 'third quartile': '75', 'complete views': '100'}) 
+            df_tmp = df_tmp[['date', 'impressions','reach', 'clicks',  '25', '50', '75', '100']] # оставляем только нужные поля
+            df_tmp = df_tmp.reset_index(drop=True) # сбрасываем индексацию
+            end_index = list(df_tmp[df_tmp['date']==0].index)[0] # получаем окончание датаФрейма
+            df_tmp = df_tmp.iloc[:end_index] # обрезаем датаФрейм до нужной строки
             df_tmp['date'] = pd.to_datetime(df_tmp['date']).dt.date # приводим датуВремя в просто дату
             df_tmp['source'] = 'beeline'
             df_tmp['format_type'] = 'video' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
