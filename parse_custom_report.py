@@ -110,13 +110,13 @@ def get_one_target_video_base_bonus_report(data_link, report_type):
         start_index = start_index_list[i] # берем индекс начала
         end_index = end_index_list[i] # берем индекс окончания
         # название продукта находится сверху таблицы с данными. поэтому нам нужна предыдущая ячейка перед начальным индексом
-        product = str(df['date'][start_index-1]).lower.strip() # забираем название продукта
+        product = str(df['date'][start_index-1]).lower().strip() # забираем название продукта
         # print(index_product_list[i])
         df_tmp = df.iloc[start_index+1:end_index] # забираем строки из диапазона
 
         df_tmp['source'] = 'one target'
         df_tmp['format_type'] = 'video'
-        # df_tmp['product'] =  str(product).lower().strip()
+        df_tmp['product'] =  product
         df_tmp['date'] = pd.to_datetime(df_tmp['date']).dt.date # приводим в формат даты
         # обязательно убираем дни, в которых не было показов
         # т.к. мы делим общее кол-во досмотров за период на кол-во дней в периоде
