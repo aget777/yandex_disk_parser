@@ -422,7 +422,7 @@ def get_mediaserfer_banner_report(data_link, report_type):
     
     df['format_type'] = 'banner' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
     df['date'] = pd.to_datetime(df['date']).dt.date  # приводим в формат даты
-    df['product'] = df['product'].str.lower()
+    df['product'] = df['product'].str.lower().str.strip()
     df['report_type'] = report_type
 
     return df
@@ -441,18 +441,20 @@ def get_mediaserfer_banner_report(data_link, report_type):
 def get_digitalalliance_video_report(data_link, report_type):
     cols_range = 'B:K' # задаем диапазон полей, которые нам нужны
 
-    # создаем список с названиями полей
-    cols_name = ['product', 'date', 'impressions', 'clicks', 'ctr', '25', '50', '75', '100', 'reach']
-    df = pd.read_excel(BytesIO(data_link), sheet_name='Sheet1', skiprows=2, usecols=cols_range, names=cols_name)
-    df = df[['product', 'date', 'impressions', 'clicks', '25', '50', '75', '100', 'reach']]
+    df = pd.read_excel(BytesIO(data_link), sheet_name='Sheet1', usecols=cols_range)
+    start_index = list(df[df['Unnamed: 1'].str.lower()=='название рм'].index)[0] # забираем индекс строки, где содержаться заголовки
+    df.columns = df.iloc[start_index].str.lower().str.strip().str.replace('\n', ' ') # забираем название полей из файла
+    df = df.rename(columns={'название рм': 'product', 'дата': 'date', 'показы': 'impressions', 'клики': 'clicks',
+                           'досмотры рекламы до 25%': '25', 'досмотры рекламы до 50%': '50', 
+                           'досмотры рекламы до 75%': '75', 'досмотры рекламы до 100%': '100', 'уники': 'reach'})
+    df = df[['product', 'date', 'impressions', 'clicks',  '25', '50', '75', '100', 'reach']]
     df = df.fillna(0)
-    
-    end_index = list(df[df['date']==0].index)[0]
-    df = df.iloc[:end_index] # оставляем строки с данными, которые нам нужны
+    end_index = list(df[df['date']==0].index)[1]
+    df = df.iloc[start_index+1:end_index] # оставляем строки с данными, которые нам нужны
     
     df['source'] = 'digitalalliance' #добавляем название источника
     df['date'] = pd.to_datetime(df['date']).dt.date  # приводим в формат даты
-    df['product'] = df['product'].str.lower()
+    df['product'] = df['product'].str.lower().str.strip()
     df['report_type'] = report_type
     df['format_type'] = 'video' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
 
