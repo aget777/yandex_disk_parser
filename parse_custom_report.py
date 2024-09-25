@@ -74,7 +74,7 @@ def get_one_target_views(data_link, report_type):
     df['source'] = 'one target'
     df['start_period'] = start_period
     df['end_period'] = end_period
-    df['product'] = df['product'].str.lower()
+    df['product'] = df['product'].str.lower().str.strip()
     df['report_type'] = report_type
     return df
 
@@ -110,19 +110,19 @@ def get_one_target_video_base_bonus_report(data_link, report_type):
         start_index = start_index_list[i] # берем индекс начала
         end_index = end_index_list[i] # берем индекс окончания
         # название продукта находится сверху таблицы с данными. поэтому нам нужна предыдущая ячейка перед начальным индексом
-        product = df['date'][start_index-1] # забираем название продукта
+        product = str(df['date'][start_index-1]).lower.strip() # забираем название продукта
         # print(index_product_list[i])
         df_tmp = df.iloc[start_index+1:end_index] # забираем строки из диапазона
 
         df_tmp['source'] = 'one target'
         df_tmp['format_type'] = 'video'
-        df_tmp['product'] =  product
+        # df_tmp['product'] =  str(product).lower().strip()
         df_tmp['date'] = pd.to_datetime(df_tmp['date']).dt.date # приводим в формат даты
         # обязательно убираем дни, в которых не было показов
         # т.к. мы делим общее кол-во досмотров за период на кол-во дней в периоде
         # если отавить дни БЕЗ показов получится искаженная статистика
         df_tmp = df_tmp[df_tmp['impressions']!=0] # убираем дни, в которых не было показов объявлений
-        df_tmp['product'] =  df_tmp['product'].str.lower().str.strip()
+        # df_tmp['product'] =  df_tmp['product'].str.lower().str.strip()
         # сохраняем датаФрейм во временный словарь 
         # ключ - это название продукта (15s, 6s и тд)
         df_tmp['report_type'] = report_type # сохраняем в отдельном поле - относится отчет к бонусным или нет
@@ -157,7 +157,7 @@ def get_hybrid_video_banner_report(data_link, report_type, sheet_name):
         df['source'] = 'hybrid' #добавляем название источника
         df['format_type'] = 'video' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
         df['date'] = pd.to_datetime(df['date']).dt.date  # приводим в формат даты
-        df['product'] = df['product'].str.lower()
+        df['product'] = df['product'].str.lower().str.strip()
         df['report_type'] = report_type
         return df
         
@@ -176,7 +176,7 @@ def get_hybrid_video_banner_report(data_link, report_type, sheet_name):
         
         df['format_type'] = 'banner' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
         df['date'] = pd.to_datetime(df['date']).dt.date  # приводим в формат даты
-        df['product'] = df['product'].str.lower()
+        df['product'] = df['product'].str.lower().str.strip()
         df['report_type'] = report_type
         return df
 
@@ -208,9 +208,9 @@ def get_beeline_video_report(data_link, report_type):
             # забираем индекс строки начала таблицы
             start_index = start_index_list[num] # берем индекс начала таблицы с данными
             creative_name = df[0][start_index-1] # забираем значение из ячейки над полем Дата 
-            key = name 
+            key = str(name).lower().strip() # ключ - это название листа excel, забираем на верхнем цикле
             if creative_name:
-                key = name + '_' + str(creative_name).lower().str.strip() # если такое название есть, то добавляем его к базовому названию креатива
+                key = name + '_' + str(creative_name).lower().strip() # если такое название есть, то добавляем его к базовому названию креатива
                 
             df_tmp = df.iloc[start_index+1:]
             df_tmp.columns = df.iloc[start_index].str.lower().str.strip().str.replace('\n', ' ') # забираем название полей из файла
@@ -254,8 +254,8 @@ def get_gnezdo_banner_report(data_link, report_type):
         df = df.fillna(0)  #заполяем пустые строки, чтобы затем их удалить
 
         base_text = df[0][3].lower().strip() # Название креатива(продукта) в столбике А в 4 строке - должно начинаться со слова креатив
-        base_text = re.sub('[_!;:()-]+', ' ', base_text )
-        base_text = re.sub(' +', ' ', base_text)
+        base_text = re.sub('[_!;:()-]+', ' ', base_text ) # убираем из названия креатива лишние символы
+        base_text = re.sub(' +', ' ', base_text) # e,bhftv kbiybt ghj,tks
 
         start_index = str(base_text).find('креатив') # Забираем индекс, с которого начинается название креатива
         product_name = str(base_text)[start_index:] # сохраняем название креатива
@@ -273,8 +273,8 @@ def get_gnezdo_banner_report(data_link, report_type):
         df['format_type'] = 'banner' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
         df['date'] = df['date'].apply(lambda x: datetime.strptime(x, '%d.%m.%Y').date().strftime('%Y-%m-%d'))# приводим в формат даты
         
-        df['product'] = product_name # добавляем статичное поле с названием продукта
-        df['product'] = df['product'].str.lower().str.strip()
+        df['product'] = str(product_name).lower().strip() # добавляем статичное поле с названием продукта
+        # df['product'] = df['product'].str.lower().str.strip()
         df['report_type'] = report_type
         # сохраняем датаФрейм во временный словарь 
         # ключ - это название продукта (15s, 6s и тд)
@@ -315,8 +315,8 @@ def get_astralab_banner_report(data_link, report_type):
         df['format_type'] = 'banner' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
         df['date'] = pd.to_datetime(df['date']).dt.date  # приводим в формат даты
     
-        df['product'] = product # добавляем статичное поле с названием продукта
-        df['product'] = df['product'].str.lower().str.strip()
+        df['product'] = str(product).lower().strip() # добавляем статичное поле с названием продукта
+        # df['product'] = df['product'].str.lower().str.strip()
         df['report_type'] = report_type
         
         # сохраняем датаФрейм во временный словарь 
@@ -348,7 +348,7 @@ def get_avito_banner_report(data_link, report_type):
     
     df['format_type'] = 'banner' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
     df['date'] = pd.to_datetime(df['date']).dt.date  # приводим в формат даты
-    df['product'] = df['product'].str.lower()
+    df['product'] = df['product'].str.lower().str.strip()
     df['report_type'] = report_type
     return df
 
@@ -369,19 +369,21 @@ def get_turbotarget_banner_report(data_link, report_type):
 
     # создаем список с названиями полей
     cols_range = 'A:F'
-    cols_name = ['date', 'impressions', 'clicks', 'ctr', 'budget', 'reach']
-    df = pd.read_excel(BytesIO(data_link), sheet_name='по креативам', header=None, usecols=cols_range, names=cols_name)
-
-    df = df[['date', 'impressions', 'clicks', 'budget', 'reach']]
-    start_index_list = list(df[df['date']=='Дата'].index) # сохраняем в список индексы строк начала каждой таблицы с данными
-    end_index_list = list(df[df['date']=='Итого'].index) # сохраняем в список индексы строк окончания каждой таблицы с данными
     
+    df = pd.read_excel(BytesIO(data_link), sheet_name='по креативам', header=None, usecols=cols_range)
+
+    start_index_list = list(df[df[0]=='Дата'].index) # сохраняем в список индексы строк начала каждой таблицы с данными
+    end_index_list = list(df[df[0]=='Итого'].index) # сохраняем в список индексы строк окончания каждой таблицы с данными
+
+    df.columns = df.iloc[start_index_list[0]+1].str.lower().str.strip().str.replace('\n', ' ') # забираем название полей из файла
+    df = df.rename(columns={np.nan: 'date', 'показы': 'impressions', 'клики': 'clicks', 'бюджет': 'budget', 'охват': 'reach'})
+    df = df[['date', 'impressions', 'clicks', 'budget', 'reach']] # оставлем только нужные поля
     
     for i in range(len(start_index_list)):
         start_index = start_index_list[i] # получаем индкс начала конкретной таблицы
         end_index =  end_index_list[i]  # получаем индкс окончания конкретной таблицы
     
-        name = df['date'][start_index-1] # забираем название креатива, к которому относится статистика в таблице
+        name = str(df['date'][start_index-1]).lower().strip() # забираем название креатива, к которому относится статистика в таблице
 
         df_tmp = df.iloc[start_index+2:end_index] # оставляем строки с данными, которые нам нужны
         df_tmp = df_tmp.fillna('')
@@ -390,7 +392,7 @@ def get_turbotarget_banner_report(data_link, report_type):
         df_tmp['source'] = 'turbotarget' #добавляем название источника
         df_tmp['format_type'] = 'banner' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
         df_tmp['date'] = pd.to_datetime(df_tmp['date']).dt.date  # приводим в формат даты
-        df_tmp['product'] = df_tmp['product'].str.lower()
+
         df_tmp['report_type'] = report_type
         tmp_video_dict[name] = df_tmp
 
