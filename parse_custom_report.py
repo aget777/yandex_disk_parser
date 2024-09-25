@@ -27,6 +27,7 @@ import numpy as np
 from sqlalchemy import create_engine
 import pyodbc
 import warnings
+import re
 from yandex_disk_func import *
 
 
@@ -207,8 +208,8 @@ def get_beeline_video_report(data_link, report_type):
                 key = name + '_' + str(creative_name).lower().str.strip() # если такое название есть, то добавляем его к базовому названию креатива
                 
             df_tmp = df.iloc[start_index+1:]
-            df_tmp.columns = df.iloc[start_index].str.lower().str.strip() # забираем название полей из файла
-            # привоодим их к единому стандарту
+            df_tmp.columns = df.iloc[start_index].str.lower().str.strip().str.replace('\n', ' ') # забираем название полей из файла
+            # привоодим названия к единому стандарту
             df_tmp = df_tmp.rename(columns={'first quartile': '25', 'midpoint': '50', 'third quartile': '75', 'complete views': '100'}) 
             df_tmp = df_tmp[['date', 'impressions','reach', 'clicks',  '25', '50', '75', '100']] # оставляем только нужные поля
             df_tmp = df_tmp.reset_index(drop=True) # сбрасываем индексацию
@@ -238,33 +239,37 @@ def get_beeline_video_report(data_link, report_type):
 def get_gnezdo_banner_report(data_link, report_type):
     tmp_banner_dict = {}
     
-    cols_range = 'A:E' # задаем диапазон полей, которые нам нужны
-    # создаем список с названиями полей
-    cols_name = ['date', 'reach', 'impressions', 'views', 'clicks']
-    
+    cols_range = 'A:E' # задаем диапазон полей, которые нам нужны  
     sheet_names = pd.ExcelFile(BytesIO(data_link))
     # проходим через цикл по списку названий листов
     # sheets_list = sheet_names.sheet_names[1:]
     for name in sheet_names.sheet_names[1:]:
         # передаем название листа для парсинга, диапазон колонок, которые нам нужны и заранее подготовленный списко названий полей
-        df = pd.read_excel(BytesIO(data_link), sheet_name=name, usecols=cols_range, header=None, names=cols_name) 
+        df = pd.read_excel(BytesIO(data_link), sheet_name=name, usecols=cols_range, header=None) 
         df = df.fillna(0)  #заполяем пустые строки, чтобы затем их удалить
 
-        base_text = df['date'][3] # Название креатива(продукта) находится в столбике А в 4 строке - указывается в самом конце в скобочках
-        start_index = str(base_text).find(' (') + 2 # Забираем индекс, с которого начинается название креатива
-        end_index = str(base_text).find(') ') # Забираем индекс, которым заканчивается назание креатива
-        product_name = str(base_text)[start_index:end_index] # сохраняем название креатива
+        base_text = df[0][3].lower().strip() # Название креатива(продукта) в столбике А в 4 строке - должно начинаться со слова креатив
+        base_text = re.sub('[_!;:()-]+', ' ', base_text )
+        base_text = re.sub(' +', ' ', base_text)
 
-        start_index = list(df[df['date']=='Дата'].index)[0]  # берем индекс начала таблицы с данными
-        end_index = list(df[df['date']=='Всего'].index)[0] # берем индекс окончания таблицы с данными
+        start_index = str(base_text).find('креатив') # Забираем индекс, с которого начинается название креатива
+        product_name = str(base_text)[start_index:] # сохраняем название креатива
 
+        start_index = list(df[df[0]=='Дата'].index)[0]  # берем индекс начала таблицы с данными
+        end_index = list(df[df[0]=='Всего'].index)[0] # берем индекс окончания таблицы с данными
+
+        df.columns = df.iloc[start_index].str.lower().str.strip().str.replace('\n', ' ') # забираем название полей из файла
         df = df.iloc[start_index+1:end_index] # оставляем строки с данными, которые нам нужны
+         # привоодим названия к единому стандарту
+        df = df.rename(columns={'дата': 'date', 'охват': 'reach', 'показы': 'impressions', 'видимые показы': 'views', 'переходы': 'clicks'}) 
+        df = df[['date', 'reach', 'impressions', 'views', 'clicks']] # оставляем только нужные поля
+    
         df['source'] = 'gnezdo' #добавляем название источника
         df['format_type'] = 'banner' # добавляем статичое поле с название Типа формата рекламы (Видео/Баннер)
-        df['date'] = df['date'].apply(lambda x: datetime.strptime(x, '%d.%m.%Y').date().strftime('%Y-%m-%d'))#pd.to_datetime(df['date']).dt.date  # приводим в формат даты
+        df['date'] = df['date'].apply(lambda x: datetime.strptime(x, '%d.%m.%Y').date().strftime('%Y-%m-%d'))# приводим в формат даты
         
-        df.insert(1, 'product', product_name, True) # добавляем статичное поле с названием продукта
-        df['product'] = df['product'].str.lower()
+        df['product'] = product_name # добавляем статичное поле с названием продукта
+        df['product'] = df['product'].str.lower().str.strip()
         df['report_type'] = report_type
         # сохраняем датаФрейм во временный словарь 
         # ключ - это название продукта (15s, 6s и тд)
