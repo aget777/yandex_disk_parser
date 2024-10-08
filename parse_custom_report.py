@@ -382,6 +382,8 @@ def get_astralab_banner_report(data_link, report_type):
 
 def get_avito_banner_report(data_link, report_type):
     
+    tmp_banner_dict = {}
+
     df = pd.read_excel(BytesIO(data_link), sheet_name='Statistics by creative', skiprows=1)
     df = df[['ID Креатива', 'Дата', 'Название креатива', 'Показы', 'Клики', 'Охват']]
     df['product'] = df['Название креатива'] + '_id_' + df['ID Креатива'].astype('str')
@@ -394,7 +396,24 @@ def get_avito_banner_report(data_link, report_type):
     df['date'] = pd.to_datetime(df['date']).dt.date  # приводим в формат даты
     df['product'] = df['product'].str.lower().str.strip()
     df['report_type'] = report_type
-    return df
+    
+    df = df.sort_values(by=['product', 'date'], ascending=[True, True]).reset_index() # сортируем датаФрейм по дате и названию продукта
+    products_list = list(df['product'].drop_duplicates()) # создаем список продуктов в датаФрейме
+    # проходим через цикл по списку продуктов
+    # создаем временный датаФрейм по каждому продукту в отдельности
+    # находим дату начала статистики
+    # далее вычисляем прирост Охвата
+    # если текущая дата равна минимальной, то возвращаем стартовое значение охвата
+    # иначе вычитаем из текущего значения предыдущее
+    for product in products_list:
+        df_tmp = pd.DataFrame()
+        df_tmp = df[df['product']==product]
+        df_tmp['start_date'] = df_tmp['date'].min()
+        df_tmp['increment'] = np.where(df_tmp['date'] == df_tmp['start_date'], df_tmp['reach'], df_tmp['reach'] - df_tmp['reach'].shift(1)) 
+        df_tmp = df_tmp[['date', 'product', 'impressions', 'clicks', 'increment', 'source', 'format_type', 'report_type']]
+        df_tmp = df_tmp.rename(columns={'increment': 'reach'})
+        tmp_banner_dict[product] = df_tmp
+    return pd.concat(tmp_banner_dict, ignore_index=True)
 
 
 # In[ ]:
@@ -520,7 +539,7 @@ def get_digitalalliance_video_report(data_link, report_type):
 # 2. Название креатива находится в поле creo
 # 3. У каждой таблицы должна быть шапка с заголовками
 # 4. В столбике А обязательно должна быть дата
-# 8. Каждая таблица должна заканчиваться строкой итогов. При этом в ячейке в столбике А должна быть слово Итого
+# 5. Каждая таблица должна заканчиваться строкой итогов. При этом в ячейке в столбике А должна быть слово Итого
 
 def get_adwile_banner_report(data_link, report_type):
     tmp_banner_dict = {}
